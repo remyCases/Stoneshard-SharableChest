@@ -26,9 +26,6 @@ public class SharableChest : Mod
                 .Select(gameObject => (room.Name.Content, gameObject.X, gameObject.Y)));
 
         Init(tags);
-
-        DataLoader.data.GameObjects.IndexOf(DataLoader.data.GameObjects.First(x => x.Name.Content == "o_inv_etnarch_mask"));
-
     }
 
     public void Init(IEnumerable<(string, int, int)> tags)
@@ -208,13 +205,6 @@ function scr_msl_debug_extrem(argument0)
         Msl.LoadGML("gml_GlobalScript_scr_loadContainerContent")
             .MatchFrom("function\n{")
             .InsertBelow(@"scr_msl_debug_extrem(""gml_GlobalScript_scr_loadContainerContent"")")
-            .Save();
-
-        int index = DataLoader.data.GameObjects.IndexOf(DataLoader.data.GameObjects.First(x => x.Name.Content == "o_container_backpack"));
-        Msl.LoadGML("gml_GlobalScript_scr_adaptiveMenusPositionUpdate")
-            .MatchFrom($"case {index}:")
-            .InsertBelow("case o_player:")
-            .Peek()
             .Save();
     }
 }
