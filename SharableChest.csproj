@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+<ItemGroup>
+    <Reference Include="ModShardLauncher">
+      <HintPath>..\..\ModShardLauncher.dll</HintPath>
+    </Reference>
+    <Reference Include="UndertaleModLib">
+      <HintPath>..\..\UndertaleModLib.dll</HintPath>
+    </Reference>
+    <Reference Include="UndertaleModTool">
+      <HintPath>..\..\UndertaleModTool.dll</HintPath>
+    </Reference>
+    <Reference Include="Linq">
+      <HintPath>..\..\System.Linq.dll</HintPath>
+    </Reference>
+    <Reference Include="Serilog">
+      <HintPath>..\..\Serilog.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>
