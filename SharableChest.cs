@@ -20,39 +20,27 @@ public class SharableChest : Mod
     public override string Version => "0.1.0.0";
     public override void PatchMod()
     {
-        IEnumerable<(string, int, int)> tags = Msl.GetRooms()
-            .Where(room => room.GameObjects.Any(u => u.ObjectDefinition.Name.Content == "o_player_chest"))
-            .SelectMany(room => room.GameObjects.Where(gameObject => gameObject.ObjectDefinition.Name.Content == "o_player_chest")
-                .Select(gameObject => (room.Name.Content, gameObject.X, gameObject.Y)));
-
-        Init(tags);
+        Patch();
     }
 
-    public void Init(IEnumerable<(string, int, int)> tags)
+    public void Patch()
     {
-        string function = ModFiles.GetCode("scr_mod_playerContainersMapInit.gml");
-        string insert = tags.Select(x => $@"ds_map_add(global._mod_playerContainerTagsMap, ""{x.Item1}"", undefined)").Collect();
-
-        /* 
-        insert += tags.Select(x => 
-            $@"
-                coords = scr_glmap_getLocation(""{x.Item1}"");
-                if (is_undefined(coords))
-                {{
-                    scr_msl_log(""undefined coords from room {x.Item1}"");
-                }}
-                else
-                {{
-                    scr_msl_log(""room {x.Item1}: coord "" + string(coords));
-                    realtag = string_join(""_"", ""{x.Item1}"", string(coords.x), string(coords.y), ""{x.Item2}"", ""{x.Item3}"");
-                    ds_list_add(global.tag_player_chest, realtag);
-                }}
-            "
-        )
-        .Collect();
-        */
-
-        Msl.AddFunction(string.Format(function, insert), "scr_mod_playerContainersMapInit");
+        Msl.AddFunction(@"
+function scr_msl_debug_extrem(argument0)
+{
+    if(variable_global_exists(""__debug_on"") && global.__debug_on)
+    {
+        if(variable_global_exists(""containersLootDataMap""))
+        {
+            scr_msl_log(argument0 + "" "" + string(id) +  "" "" + object_get_name(object_index) + "" : "" + string(ds_list_size(ds_map_find_value(global.containersLootDataMap, ""caravan_stash""))))
+        }
+        else
+        {
+            scr_msl_log(""containersLootDataMap does not exist"");
+        }
+    }
+    
+}", "scr_msl_debug_extrem");
 
         Msl.LoadGML("gml_GlobalScript_scr_load_container")
             .MatchFrom(@"loot_save_tag = argument0")
@@ -87,7 +75,8 @@ else
             {
                 name = other.name
                 parent = other.id
-            }")
+            }
+            event_user(5)")
             .Save();
 
         Msl.AddNewEvent("o_player_chest", @"scr_load_container(""caravan_stash"")", EventType.Alarm, 3);
@@ -96,23 +85,6 @@ else
             .MatchAll()
             .ReplaceBy(@"if(variable_global_exists(""__debug_on"")) {global.__debug_on = !(global.__debug_on)} else {global.__debug_on = true}")
             .Save();
-
-        Msl.AddFunction(@"
-function scr_msl_debug_extrem(argument0)
-{
-    if(variable_global_exists(""__debug_on"") && global.__debug_on)
-    {
-        if(variable_global_exists(""containersLootDataMap""))
-        {
-            scr_msl_log(argument0 + "" "" + string(id) +  "" "" + object_get_name(object_index) + "" : "" + string(ds_list_size(ds_map_find_value(global.containersLootDataMap, ""caravan_stash""))))
-        }
-        else
-        {
-            scr_msl_log(""containersLootDataMap does not exist"");
-        }
-    }
-    
-}", "scr_msl_debug_extrem");
 
         int instruction_index = 0;
         uint diff_children = 0;
@@ -193,18 +165,36 @@ function scr_msl_debug_extrem(argument0)
             .MatchFrom("ds_list_clear")
             .InsertBelow(@$"scr_msl_debug_extrem(""gml_GlobalScript_scr_save_item 2"")")
             .MatchFrom("with (o_inv_slot)\n{")
-            .InsertBelow(@$"scr_msl_debug_extrem(""gml_GlobalScript_scr_save_item 3 owner "" + string(owner) + "" "" + object_get_name(object_index))")
+            .InsertBelow(@$"scr_msl_debug_extrem(""gml_GlobalScript_scr_save_item 3 owner: "" + string(owner))")
             .MatchFrom("owner == argument1\n{")
             .InsertBelow(@$"scr_msl_debug_extrem(""gml_GlobalScript_scr_save_item 4"")")
             .MatchFrom("var _item")
-            .InsertAbove(@$"scr_msl_debug_extrem(""gml_GlobalScript_scr_save_item _id_name "" + string(_id_name))")
-            .MatchFrom("ds_list_add(argument0, _item)")
-            .InsertAbove(@$"scr_msl_debug_extrem(""gml_GlobalScript_scr_save_item _item "" + string(ds_list_find_value(_item, 0)))")
+            .InsertAbove(@$"scr_msl_debug_extrem(""gml_GlobalScript_scr_save_item 5 contains: "" + string(_id_name))")
             .Save();
 
         Msl.LoadGML("gml_GlobalScript_scr_loadContainerContent")
             .MatchFrom("function\n{")
-            .InsertBelow(@"scr_msl_debug_extrem(""gml_GlobalScript_scr_loadContainerContent"")")
+            .InsertBelow(@$"with (o_inv_slot)
+            {{
+                scr_msl_debug_extrem(""gml_GlobalScript_scr_loadContainerContent 0 owner: "" + string(owner) + "" contains:"" + string(ds_map_find_value(data, ""idName"")));
+            }}")
+            .MatchFrom("return")
+            .InsertAbove(@$"with (o_inv_slot)
+            {{
+                scr_msl_debug_extrem(""gml_GlobalScript_scr_loadContainerContent 1 owner: "" + string(owner) + "" contains:"" + string(ds_map_find_value(data, ""idName"")));
+            }}")
+            .Save();
+            
+        Msl.LoadGML("gml_Object_c_abstract_chest_Other_13")
+            .MatchAll()
+            .InsertAbove(@$"scr_msl_log(""gml_Object_c_abstract_chest_Other_13 0"")")
+            .MatchFrom("scr_alarm_noise_update")
+            .InsertBelow(@$"scr_msl_log(""gml_Object_c_abstract_chest_Other_13 1"")")
+            .MatchAll()
+            .InsertBelow(@$"scr_msl_log(""gml_Object_c_abstract_chest_Other_13 2"")")
+            .MatchFrom(@"scr_characterStatsUpdateAdd(""openedContainers""")
+            .InsertBelow(@$"
+            scr_msl_log(""gml_Object_c_abstract_chest_Other_13 first"")")
             .Save();
     }
 }
